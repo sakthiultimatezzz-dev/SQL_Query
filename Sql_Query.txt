@@ -114,6 +114,35 @@ WHERE Customers.CustomerID BETWEEN 1 AND 5
 
 GROUP BY Customers.CustomerID, Customers.CustomerName;
 
+-------------RIGHT JOIN
+
+SELECT 
+    left_table.column_name, 
+    right_table.column_name
+FROM table_a AS left_table
+RIGHT JOIN table_b AS right_table 
+    ON left_table.id = right_table.foreign_key;
+
+
+-------------RIGHT JOIN
+
+SELECT 
+    p.product_name, 
+    s.sku_id, 
+    s.units_sold, 
+    s.sale_date
+FROM Products p
+RIGHT JOIN Sales s ON p.sku_id = s.sku_id;
+
+-------------RIGHT JOIN
+
+SELECT 
+    p.sku_id AS Parent_ID,
+    c.sku_id AS Child_ID,
+    c.color
+FROM Products p
+RIGHT JOIN Products c ON p.sku_id = c.parent_sku_id
+WHERE p.sku_id IS NULL;
 
 -------------Select
 SELECT TOP 3 * FROM Customers;
@@ -279,4 +308,34 @@ DELIMITER ;
 CALL GiveRaise(101, 5000.00);
 
 ----------------------
+
+
+SELECT 
+    column_name,
+    FUNCTION() OVER (PARTITION BY group_col ORDER BY sort_col) as alias
+FROM table_name;
+
+----------------------
+SELECT 
+    parent_sku_id,
+    sku_id,
+    total_sales,
+    RANK() OVER (PARTITION BY parent_sku_id ORDER BY total_sales DESC) as sales_rank
+FROM Product_Sales;
+
+----------------------
+SELECT 
+    sale_date,
+    revenue,
+    SUM(revenue) OVER (ORDER BY sale_date) as running_total
+FROM Daily_Sales
+WHERE sale_date >= '2026-01-01';
+
+----------------------
+
+SELECT 
+    production_date,
+    units_produced,
+    AVG(units_produced) OVER (ORDER BY production_date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) as 7_day_avg
+FROM Factory_Output;
 
