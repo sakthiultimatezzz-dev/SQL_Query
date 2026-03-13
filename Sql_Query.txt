@@ -1,0 +1,282 @@
+-------Column Name
+
+
+SELECT COLUMN_NAME 
+FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_NAME = 'Customers';
+
+-------Inner Joins Select BETWEEN
+
+SELECT 
+    Customers.CustomerID, 
+    Customers.CustomerName,
+    SUM(OrderDetails.Quantity) AS TotalQuantity -- Added an aggregation for the GROUP BY to make sense
+FROM Customers
+INNER JOIN Orders 
+    ON Customers.CustomerID = Orders.CustomerID
+INNER JOIN OrderDetails 
+    ON Orders.OrderID = OrderDetails.OrderID
+WHERE 
+    Orders.OrderDate BETWEEN '1996-07-04' AND '1997-02-12'
+    AND Customers.City IS NOT NULL 
+    AND Orders.CustomerID IN (1, 2, 3, 4, 5,6,7,8)
+GROUP BY 
+    Customers.CustomerID, 
+    Customers.CustomerName;
+
+-------Inner Joins Select BETWEEN
+
+SELECT Customers.CustomerID, Customers.CustomerName, OrderDetails.OrderID
+FROM Customers
+INNER JOIN OrderDetails ON Customers.CustomerID = OrderDetails.OrderDetailID
+WHERE Customers.CustomerID BETWEEN 1 AND 5;
+
+--------Inner Joins BETWEEN SUM
+
+SELECT 
+    Customers.CustomerID, 
+    Customers.CustomerName, 
+    SUM(OrderDetails.Quantity) AS TotalQuantity
+FROM Customers
+INNER JOIN OrderDetails ON Customers.CustomerID = OrderDetails.OrderDetailID
+WHERE Customers.CustomerID BETWEEN 1 AND 5
+GROUP BY Customers.CustomerID, Customers.CustomerName;
+
+--------Inner Joins BETWEEN SUM
+SELECT 
+    Customers.CustomerID,
+    Customers.CustomerName,
+    OrderDetails.OrderID,
+    SUM(OrderDetails.Quantity) AS TotalItemsPurchased
+
+FROM Customers
+
+INNER JOIN Orders 
+    ON Customers.CustomerID = Orders.CustomerID
+
+INNER JOIN OrderDetails 
+    ON Orders.OrderID = OrderDetails.OrderID
+WHERE Customers.CustomerID BETWEEN 1 AND 3
+GROUP BY Customers.CustomerID,Customers.CustomerName,OrderDetails.OrderID;
+
+
+--------Inner Joins IN SUM
+
+SELECT 
+    Customers.CustomerID,
+    Customers.CustomerName,
+    OrderDetails.OrderID,
+    SUM(OrderDetails.Quantity) AS TotalItemsPurchased
+FROM Customers
+
+INNER JOIN Orders 
+    ON Customers.CustomerID = Orders.CustomerID
+
+INNER JOIN OrderDetails 
+    ON Orders.OrderID = OrderDetails.OrderID
+WHERE Customers.CustomerID IN (1, 3, 5) AND CustomerName = 
+GROUP BY Customers.CustomerID,Customers.CustomerName,OrderDetails.OrderID;
+
+--------Inner Joins (IN&OR) SUM
+SELECT 
+    Customers.CustomerID,
+    Customers.CustomerName,
+    OrderDetails.OrderID,
+    SUM(OrderDetails.Quantity) AS TotalItemsPurchased
+FROM Customers
+INNER JOIN Orders 
+    ON Customers.CustomerID = Orders.CustomerID
+INNER JOIN OrderDetails 
+    ON Orders.OrderID = OrderDetails.OrderID
+WHERE 
+    Customers.CustomerID IN (1, 3, 5) 
+    OR Customers.CustomerName IN ('Berglunds snabbköp', 'Antonio Moreno Taquería')
+GROUP BY 
+    Customers.CustomerID, 
+    Customers.CustomerName, 
+    OrderDetails.OrderID;
+
+-------Left Joins Select BETWEEN
+
+SELECT 
+
+    Customers.CustomerID, 
+
+    Customers.CustomerName, 
+
+    SUM(OrderDetails.Quantity) AS TotalQuantity
+
+FROM Customers
+
+LEFT JOIN OrderDetails ON Customers.CustomerID = OrderDetails.OrderDetailID
+
+WHERE Customers.CustomerID BETWEEN 1 AND 5
+
+GROUP BY Customers.CustomerID, Customers.CustomerName;
+
+
+-------------Select
+SELECT TOP 3 * FROM Customers;
+SELECT Country, SUM(CustomerID) AS TotalID
+FROM Customers
+WHERE 
+    (Country BETWEEN 'Mexico' AND 'USA') 
+    AND 
+    (
+        (CustomerID BETWEEN 1 AND 300) 
+        OR 
+        (CustomerID BETWEEN 400 AND 500)
+    )
+GROUP BY Country;
+
+-------------Select
+SELECT TOP 3 
+    Country, 
+    SUM(CustomerID) AS TotalID
+FROM Customers
+WHERE 
+    Country BETWEEN 'Mexico' AND 'USA'
+    AND (CustomerID BETWEEN 1 AND 500)
+GROUP BY Country
+ORDER BY TotalID DESC;
+
+SELECT TOP 3 * FROM Customers;
+
+--------------The "Contribution" Analysis
+
+SELECT 
+    parent_sku_id,
+    sku_id AS Child_ID,
+    SUM(quantity_sold) OVER(PARTITION BY parent_sku_id) AS Parent_Total_Qty,
+    quantity_sold AS Child_Qty,
+    ROUND(100.0 * quantity_sold / SUM(quantity_sold) OVER(PARTITION BY parent_sku_id), 2) AS Percent_Contribution
+FROM Sales_Table;
+
+---------------SQL Aggregation
+
+SELECT 
+    p.sku_id AS Parent_ID,
+    p.product_name AS Product_Line,
+    SUM(s.quantity_sold) AS Total_Units,
+    SUM(s.total_price) AS Total_Revenue
+FROM Products p
+JOIN Products c ON p.sku_id = c.parent_sku_id -- Joins Parent to its Children
+JOIN Sales s ON c.sku_id = s.sku_id            -- Joins Children to Sales data
+GROUP BY p.sku_id, p.product_name
+ORDER BY Total_Revenue DESC;
+
+
+----------------Insert
+
+INSERT INTO Employees (EmployeeName, Department, Salary)
+VALUES ('Alex Rivera', 'Marketing', 65000);
+
+----------------Update
+
+UPDATE Employees
+SET Salary = 70000, Department = 'Digital Strategy'
+WHERE EmployeeID = 101;
+
+----------------Update
+
+DELETE FROM Employees
+WHERE EmployeeID = 101;
+
+
+-----------------Before
+
+CREATE TRIGGER check_price_before_insert
+BEFORE INSERT ON Products
+FOR EACH ROW
+BEGIN
+    IF NEW.Price < 0 THEN
+        SET NEW.Price = 0;
+    END IF;
+END;
+
+-----------------After
+
+CREATE TRIGGER log_after_delete
+AFTER DELETE ON Products
+FOR EACH ROW
+BEGIN
+        INSERT INTO Product_Audit_Log (ProductID, Action, LogDate)
+    VALUES (OLD.ProductID, 'DELETED', NOW());
+END;
+
+------------------
+
+ALTER TABLE Employees ADD COLUMN is_active TINYINT DEFAULT 1;
+
+
+-----------------
+
+CREATE TRIGGER prevent_hard_delete
+BEFORE DELETE ON Employees
+FOR EACH ROW
+BEGIN
+    -- 1. Update the record to mark it as inactive instead
+    UPDATE Employees 
+    SET is_active = 0 
+    WHERE EmployeeID = OLD.EmployeeID;
+
+    -- 2. Raise an error to 'cancel' the original DELETE command
+    SIGNAL SQLSTATE '45000' 
+    SET MESSAGE_TEXT = 'Hard delete prevented. Record marked as inactive.';
+END;
+
+-----------------
+
+SHOW TRIGGERS;
+
+-----------------
+
+DROP TRIGGER IF EXISTS prevent_hard_delete;
+
+-----------------
+
+DELIMITER //
+
+CREATE PROCEDURE GetHighValueOrders()
+BEGIN
+    SELECT OrderID, TotalAmount, CustomerName
+    FROM Orders
+    WHERE TotalAmount > 5000
+    ORDER BY TotalAmount DESC;
+END //
+
+DELIMITER ;
+
+--------------------
+
+
+CALL GetHighValueOrders();
+
+---------------------
+
+DELIMITER //
+
+CREATE PROCEDURE GiveRaise(
+    IN emp_id INT, 
+    IN raise_amount DECIMAL(10,2)
+)
+BEGIN
+    -- Step 1: Update the salary
+    UPDATE Employees 
+    SET Salary = Salary + raise_amount 
+    WHERE EmployeeID = emp_id;
+    
+    -- Step 2: Select the new details to confirm
+    SELECT EmployeeName, Salary AS NewSalary 
+    FROM Employees 
+    WHERE EmployeeID = emp_id;
+END //
+
+DELIMITER ;
+
+----------------------
+
+CALL GiveRaise(101, 5000.00);
+
+----------------------
+
